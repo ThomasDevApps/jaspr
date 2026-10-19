@@ -80,5 +80,59 @@ void main() {
 
       expect(find.text('One: 21'), findsOneComponent);
     });
+
+    testClient('keeps sync overrides when the scope is updated', (tester) async {
+      document.body!.innerHTML =
+          '<div>\n'
+                  '  <!--\${"some_key":"value"}-->\n'
+                  '  <p>Hello World</p>\n'
+                  '</div>\n'
+              .toJS;
+
+      final p1 = Provider((_) => 'initial');
+
+      tester.pumpComponent(div([_RebuildingScope(provider: p1)]));
+
+      expect(find.text('Value: value, Count: 0'), findsOneComponent);
+
+      // Rebuilds the ProviderScope with a new instance -> updateOverrides
+      await tester.click(find.tag('button'));
+
+      expect(find.text('Value: value, Count: 1'), findsOneComponent);
+    });
   });
+}
+
+/// ----------------------------------------------------------------------------
+
+class _RebuildingScope extends StatefulComponent {
+  const _RebuildingScope({required this.provider});
+
+  final Provider<String> provider;
+
+  @override
+  State<_RebuildingScope> createState() => _RebuildingScopeState();
+}
+
+class _RebuildingScopeState extends State<_RebuildingScope> {
+  var _count = 0;
+
+  @override
+  Component build(BuildContext context) {
+    return ProviderScope(
+      sync: [component.provider.syncWith('some_key')],
+      child: p([
+        Builder(
+          builder: (context) {
+            final value = context.watch(component.provider);
+            return Component.text('Value: $value, Count: $_count');
+          },
+        ),
+        button(
+          onClick: () => setState(() => _count++),
+          [Component.text('Rebuild')],
+        ),
+      ]),
+    );
+  }
 }
