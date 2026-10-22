@@ -150,12 +150,16 @@ class _AttachElement extends MultiChildRenderObjectElement {
   // its children. A Document.head below a DOM element or a fragment (e.g. a
   // page's Seo inside a div) never gets it: it stayed registered, and its
   // tags (title...) kept overriding the next page's when it was deeper.
-  // unmount is called on every removed element: unregister here too. No-op
-  // when detachRenderObject already did it.
+  // unmount is called on every removed element: unregister here if
+  // detachRenderObject didn't
   @override
   void unmount() {
     final renderObject = this.renderObject as AttachRenderObject;
-    AttachAdapter.instanceFor(renderObject._target).unregister(renderObject);
+    final adapter = AttachAdapter.instanceFor(renderObject._target);
+    // Skips the head update when already unregistered
+    if (adapter.renderObjects.contains(renderObject)) {
+      adapter.unregister(renderObject);
+    }
     super.unmount();
   }
 }
