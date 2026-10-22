@@ -54,7 +54,7 @@ abstract class Document implements Component {
   /// - `<title>` and `<base>` elements override other `<title>` or `<base>` elements respectively
   /// - `<meta>` elements override other `<meta>` elements with the same `name`
   const factory Document.head({String? title, Map<String, String>? meta, List<Component>? children, Key? key}) =
-      HeadDocument;
+  HeadDocument;
 
   /// Attaches a set of attributes to the `<body>` element.
   ///
@@ -143,6 +143,20 @@ class _AttachElement extends MultiChildRenderObjectElement {
     super.detachRenderObject();
     final renderObject = this.renderObject as AttachRenderObject;
     AttachAdapter.instanceFor(renderObject._target).unregister(renderObject);
+  }
+
+  // Fix (fork): detachRenderObject is only called on the topmost render object
+  // element of a removed subtree, and a render object element doesn't visit
+  // its children. A Document.head below a DOM element or a fragment (e.g. a
+  // page's Seo inside a div) never gets it: it stayed registered, and its
+  // tags (title...) kept overriding the next page's when it was deeper.
+  // unmount is called on every removed element: unregister here too. No-op
+  // when detachRenderObject already did it.
+  @override
+  void unmount() {
+    final renderObject = this.renderObject as AttachRenderObject;
+    AttachAdapter.instanceFor(renderObject._target).unregister(renderObject);
+    super.unmount();
   }
 }
 
